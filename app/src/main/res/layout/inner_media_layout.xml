@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:background="@color/material_blue_60"
+    android:layout_height="wrap_content">
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/ep_radio_view"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:background="#A6000000"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_centerInParent="true"
+        app:layout_constraintStart_toStartOf="parent"
+        app:resize_mode="fixed_width"
+        app:use_controller="true"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+</LinearLayout>
