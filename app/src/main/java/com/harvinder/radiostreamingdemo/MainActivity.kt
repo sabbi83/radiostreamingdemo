@@ -135,6 +135,8 @@ class MainActivity : AppCompatActivity() {
                         title= entry.title.toString()
                         if(title.equals("")){
                             binding.llMedia.tvTitle.text="Ads"
+                            notificationManager()
+                            title="Ads"
                         }else{
                             binding.llMedia.tvTitle.text=title
                             notificationManager()
