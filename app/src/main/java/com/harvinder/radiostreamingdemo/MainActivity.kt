@@ -133,8 +133,13 @@ class MainActivity : AppCompatActivity() {
                     if (entry is IcyInfo) {
                         Log.d(TAG, "onMetadata: icyHeaders=$entry")
                         title= entry.title.toString()
-                        binding.llMedia.tvTitle.text=title
-                        notificationManager()
+                        if(title.equals("")){
+                            binding.llMedia.tvTitle.text="Ads"
+                        }else{
+                            binding.llMedia.tvTitle.text=title
+                            notificationManager()
+                        }
+
                     }
                 }
             }
