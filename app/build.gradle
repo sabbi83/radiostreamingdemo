@@ -97,7 +97,8 @@ dependencies {
 
     //exo player
     implementation 'com.google.android.exoplayer:exoplayer:2.8.1'
-
+   // implementation 'com.google.android.exoplayer:exoplayer:2.10'
+    implementation 'saschpe.android:exoplayer2-ext-icy:2.1.0'
     implementation 'com.google.android.exoplayer:exoplayer-core:2.12.0'
     implementation 'com.google.android.exoplayer:exoplayer-dash:2.12.0'
     implementation 'com.google.android.exoplayer:exoplayer-ui:2.12.0'
@@ -105,6 +106,5 @@ dependencies {
 
     //google play  services
     implementation 'com.google.android.gms:play-services-ads:19.5.0'
-
 
 }

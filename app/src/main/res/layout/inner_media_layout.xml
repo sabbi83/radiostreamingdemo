@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:background="@color/material_blue_60"
     android:layout_height="wrap_content">
+
     <com.google.android.exoplayer2.ui.PlayerView
         android:id="@+id/ep_radio_view"
         android:layout_width="match_parent"
@@ -17,7 +18,26 @@
         app:layout_constraintStart_toStartOf="parent"
         app:resize_mode="fixed_width"
         app:use_controller="true"
+        app:show_buffering="always"
         app:layout_constraintTop_toTopOf="parent" />
+    <TextView
+        android:id="@+id/tv_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textColor="@color/white"
+        android:layout_marginLeft="20sp"
+        android:visibility="gone"
+        android:textSize="12sp"/>
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:layout_marginTop="5dp"
+        android:layout_below="@+id/tv_name"
+        android:textColor="@color/white"
+        android:layout_marginLeft="20sp"
+        android:textSize="12sp"/>
 
-
-</LinearLayout>
+</RelativeLayout>

@@ -81,8 +81,8 @@ class HomeFragment : Fragment() {
                                 )
                             }
                             if (getPlayNowDataItem.isNotEmpty()) {
-                                _binding?.tvHeader?.setText(getPlayNowDataItem[0].name)
-                                _binding?.tvTitle?.setText(getPlayNowDataItem[0].artist)
+//                                _binding?.tvHeader?.setText(getPlayNowDataItem[0].name)
+//                                _binding?.tvTitle?.setText(getPlayNowDataItem[0].artist)
                                 Glide.with(requireContext())
                                     .load(getPlayNowDataItem?.get(0)?.image_url)
                                     .placeholder(R.drawable.loader)

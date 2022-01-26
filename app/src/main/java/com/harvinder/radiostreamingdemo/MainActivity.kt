@@ -17,17 +17,32 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
+import com.google.android.exoplayer2.metadata.MetadataOutput
+import com.google.android.exoplayer2.metadata.icy.IcyHeaders
+import com.google.android.exoplayer2.metadata.icy.IcyInfo
 import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.source.TrackGroupArray
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.google.android.gms.ads.*
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.snackbar.Snackbar
 import com.harvinder.radiostreamingdemo.databinding.ActivityMainBinding
 import com.harvinder.radiostreamingdemo.others.Constants
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import saschpe.exoplayer2.ext.icy.IcyHttpDataSourceFactory
 import java.io.IOException
 import java.net.URL
 
@@ -35,7 +50,7 @@ import java.net.URL
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val TAG = "MediaPlayerTag"
-    private lateinit var exoPlayer: ExoPlayer
+    private lateinit var exoPlayer: SimpleExoPlayer
     private lateinit var context: Context
     private lateinit var mediaSession: MediaSession
     private lateinit var stateBuilder: PlaybackState.Builder
@@ -43,9 +58,11 @@ class MainActivity : AppCompatActivity() {
     private var mInterstitialAd: InterstitialAd? = null
     private var addStatus: Boolean = true
     var playerNotificationManager:PlayerNotificationManager?=null
-
     private var notificationId = 123;
     private var channelId = "channelId"
+    private val exoPlayerEventListener = ExoPlayerEventListener()
+    private var title:String=""
+    private var name:String=""
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -87,20 +104,83 @@ class MainActivity : AppCompatActivity() {
         initializeMediaSession()
         initializePlayer()
         var playbackPosition = 0L
-        val userAgent = Util.getUserAgent(context, context.getString(R.string.app_name))
+        GlobalScope.launch(Dispatchers.Default, CoroutineStart.DEFAULT){
+            val userAgent = Util.getUserAgent(context, context.getString(R.string.app_name))
+            if (exoPlayer == null) {
+                exoPlayer = ExoPlayerFactory.newSimpleInstance(
+                    applicationContext,
+                    DefaultRenderersFactory(applicationContext),
+                    DefaultTrackSelector(),
+                    DefaultLoadControl()
+                ).apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(C.CONTENT_TYPE_MUSIC)
+                            .setUsage(C.USAGE_MEDIA)
+                            .build(), true
+                    )
+                }
 
-        val mediaSource = ExtractorMediaSource.Factory(DefaultDataSourceFactory(context, userAgent))
-            .setExtractorsFactory(DefaultExtractorsFactory())
-            .createMediaSource(Uri.parse(url))
+            }
+            exoPlayer.addMetadataOutput {
+                for (i in 0 until it.length()) {
+                    val entry = it.get(i)
+                    if (entry is IcyHeaders) {
+                        Log.d(TAG, "onIcyMetaData: icyHeaders=$entry")
+                        name= entry.name.toString()
+                        binding.llMedia.tvName.text=name
+                    }
+                    if (entry is IcyInfo) {
+                        Log.d(TAG, "onMetadata: icyHeaders=$entry")
+                        title= entry.title.toString()
+                        binding.llMedia.tvTitle.text=title
+                        notificationManager()
+                    }
+                }
+            }
+
+// The MediaSource represents the media to be played
+            exoPlayer?.addListener(exoPlayerEventListener)
+
+//
+//            // Custom HTTP data source factory which requests Icy metadata and parses it if
+//            // the stream server supports it
+//            val client = OkHttpClient.Builder().build()
+//            val icyHttpDataSourceFactory = IcyHttpDataSourceFactory.Builder(client)
+//                .setUserAgent(userAgent)
+//                .setIcyHeadersListener { Log.d(TAG, "onIcyMetaData: icyHeaders=$it") }
+//                .setIcyMetadataChangeListener {
+//                    Log.d(TAG, "onIcyMetaData: icyMetadata=$it")
+//
+//                }
+//
+//                .build()
+//            // Produces DataSource instances through which media data is loaded
+//            val dataSourceFactory = DefaultDataSourceFactory(
+//                applicationContext, null, icyHttpDataSourceFactory
+//            )
+//            // Produces Extractor instances for parsing the media data
+//            val extractorsFactory = DefaultExtractorsFactory()
+//
+//            val mediaSource = ExtractorMediaSource.Factory(dataSourceFactory)
+//                .setExtractorsFactory(extractorsFactory)
+//                .createMediaSource(Uri.parse(url))
+
+            val mediaSource = ProgressiveMediaSource
+                .Factory(DefaultDataSourceFactory(applicationContext, userAgent))
+                .createMediaSource(Uri.parse(url))
+            exoPlayer.prepare(mediaSource)
+            exoPlayer.playWhenReady = false
+
+        }
 
         exoPlayer.setSeekParameters(SeekParameters.NEXT_SYNC)
-        exoPlayer.prepare(mediaSource)
         playbackPosition= exoPlayer.getCurrentPosition()/1000;
         exoPlayer.seekTo(0, playbackPosition)
         Log.d("time",""+playbackPosition)
         ep_radio_view.setControllerShowTimeoutMs(0);
         ep_radio_view.setControllerHideOnTouch(false);
-        exoPlayer.playWhenReady = false
+        //exoPlayer.playWhenReady = false
         ep_radio_view.player?.addListener(object : Player.DefaultEventListener() {
             override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 if (playWhenReady && playbackState == Player.STATE_READY) {
@@ -118,58 +198,7 @@ class MainActivity : AppCompatActivity() {
         })
 
 
-        playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
-            this,
-            "channelId",
-            R.string.app_name,
-           notificationId,
-            object : PlayerNotificationManager.MediaDescriptionAdapter {
-
-
-
-                override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                    // return pending intent
-//                    val intent = Intent(context, AudioPlayer::class.java);
-//                    return PendingIntent.getActivity(
-//                        context, 0, intent,
-//                        PendingIntent.FLAG_UPDATE_CURRENT
-//                    )
-
-                    return null
-                }
-
-                //pass description here
-                override fun getCurrentContentText(player: Player): String? {
-                    return "Description"
-                }
-
-                //pass title (mostly playing audio name)
-                override fun getCurrentContentTitle(player: Player): String {
-                    Log.d("title",return "Title")
-                    val window: Int = player.getCurrentWindowIndex()
-                    return "Title"
-                   // return "Title"
-                }
-
-                // pass image as bitmap
-                override fun getCurrentLargeIcon(
-                    player: Player,
-                    callback: PlayerNotificationManager.BitmapCallback
-                ): Bitmap? {
-                    var image: Bitmap? = null
-                    try {
-                        var url = URL("content image url")
-                        image = BitmapFactory.decodeStream(url.openConnection().getInputStream())
-                    } catch (e: IOException) {
-
-                    }
-                    return image
-                }
-            },
-
-        )
-        //attach player to playerNotificationManager
-        playerNotificationManager?.setPlayer(exoPlayer)
+        notificationManager()
 
 
     }
@@ -181,6 +210,7 @@ class MainActivity : AppCompatActivity() {
             .also { exoPlayer ->
                 ep_radio_view.player = exoPlayer
             }
+
     }
 
 
@@ -312,6 +342,78 @@ class MainActivity : AppCompatActivity() {
             var adRequest = AdRequest.Builder().build()
             mInterstitialAd?.loadAd(adRequest)
         }
+    }
+    private inner class ExoPlayerEventListener : Player.EventListener {
+        override fun onTimelineChanged(timeline: Timeline, manifest: Any?, reason: Int) = Unit
+        override fun onTracksChanged(groups: TrackGroupArray, selections: TrackSelectionArray) = Unit
+        override fun onLoadingChanged(isLoading: Boolean) = Unit
+
+        override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+            Log.i(
+                TAG,
+                "onPlayerStateChanged: playWhenReady=$playWhenReady, playbackState=$playbackState"
+            )
+            when (playbackState) {
+//                Player.STATE_IDLE, Player.STATE_BUFFERING, Player.STATE_READY ->
+//                    //isPlaying = true
+//                Player.STATE_ENDED ->
+//                    //stop()
+            }
+        }}
+
+    fun notificationManager(){
+        playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
+            this,
+            "channelId",
+            R.string.app_name,
+            notificationId,
+            object : PlayerNotificationManager.MediaDescriptionAdapter {
+
+
+
+                override fun createCurrentContentIntent(player: Player): PendingIntent? {
+                    // return pending intent
+//                    val intent = Intent(context, AudioPlayer::class.java);
+//                    return PendingIntent.getActivity(
+//                        context, 0, intent,
+//                        PendingIntent.FLAG_UPDATE_CURRENT
+//                    )
+
+                    return null
+                }
+
+                //pass description here
+                override fun getCurrentContentText(player: Player): String? {
+                    return title
+                }
+
+                //pass title (mostly playing audio name)
+                override fun getCurrentContentTitle(player: Player): String {
+//                    Log.d("title",return "Title")
+//                    val window: Int = player.getCurrentWindowIndex()
+                    return title
+                    // return "Title"
+                }
+
+                // pass image as bitmap
+                override fun getCurrentLargeIcon(
+                    player: Player,
+                    callback: PlayerNotificationManager.BitmapCallback
+                ): Bitmap? {
+                    var image: Bitmap? = null
+                    try {
+                        var url = URL("content image url")
+                        image = BitmapFactory.decodeStream(url.openConnection().getInputStream())
+                    } catch (e: IOException) {
+
+                    }
+                    return image
+                }
+            },
+
+            )
+        //attach player to playerNotificationManager
+        playerNotificationManager?.setPlayer(exoPlayer)
     }
 
 }
